@@ -1,7 +1,6 @@
 name: "Node-to-docker"
 on:
   workflow_dispatch:
-    inputs:
 
 jobs:
   node-build-push-docker:
@@ -9,9 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 100
-          token: ${{ secrets.REPO_TOKEN }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
