@@ -1,12 +1,14 @@
 // Copyright 2020-2022 SubQuery Pte Ltd authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Controller } from 'src/account/account.model';
 
-import { AccountModule } from 'src/account/account.module';
-
+import {SubscriptionModule} from "../subscription/subscription.module";
+import {Controller, Indexer} from "./account.model";
+import {AccountResolver} from "./account.resolver";
+import {AccountService} from "./account.service";
 import { ContractService } from './contract.service';
 import { DockerRegistryService } from './docker.registry.service';
 import { DockerService } from './docker.service';
@@ -15,7 +17,11 @@ import { QueryService } from './query.service';
 import { ServiceResolver } from './service.resolver';
 
 @Module({
-  imports: [forwardRef(() => AccountModule), TypeOrmModule.forFeature([Controller])],
+  imports: [
+    SubscriptionModule,
+    TypeOrmModule.forFeature([Controller,Indexer]),
+    ScheduleModule.forRoot(),
+  ],
   providers: [
     ContractService,
     DockerRegistryService,
@@ -23,7 +29,9 @@ import { ServiceResolver } from './service.resolver';
     NetworkService,
     QueryService,
     ServiceResolver,
+    AccountService,
+    AccountResolver,
   ],
-  exports: [ContractService, DockerRegistryService, DockerService, NetworkService, QueryService],
+  exports: [ContractService, DockerRegistryService, DockerService, NetworkService, QueryService, AccountService],
 })
-export class ServicesModule {}
+export class CoreModule {}

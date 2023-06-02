@@ -4,24 +4,22 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ServicesModule } from 'src/services/services.module';
-import { SubscriptionModule } from 'src/subscription/subscription.module';
-import { DBModule } from 'src/db/db.module';
+import { CoreModule } from '../core/core.module';
+import { DBModule } from '../db/db.module';
+import { MetricsModule } from '../metrics/metrics.module';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
-import { ProjectService } from './project.service';
-import { ProjectResolver } from './project.resolver';
-import { PaygEntity, ProjectEntity } from './project.model';
-import { MetricsModule } from 'src/metrics/metrics.module';
 import { PortService } from './port.service';
-import { AccountModule } from 'src/account/account.module';
+import { PaygEntity, ProjectEntity } from './project.model';
+import { ProjectResolver } from './project.resolver';
+import { ProjectService } from './project.service';
 
 @Module({
   imports: [
     SubscriptionModule,
-    ServicesModule,
+    CoreModule,
     DBModule,
     MetricsModule,
-    AccountModule,
     TypeOrmModule.forFeature([ProjectEntity, PaygEntity]),
   ],
   providers: [ProjectService, PortService, ProjectResolver],

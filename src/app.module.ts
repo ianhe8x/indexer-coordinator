@@ -3,26 +3,25 @@
 
 import { join } from 'path';
 import { Module } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { GraphQLModule } from '@nestjs/graphql';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigureModule } from './configure/configure.module';
-import { argv, PostgresKeys } from './yargs';
 import { AdminController } from './admin.controller';
 import { AgreementController } from './agreement.controller';
-import { MonitorController } from './monitor.controller';
 
-import { SubscriptionModule } from './subscription/subscription.module';
-import { ServicesModule } from './services/services.module';
-import { MetricsModule } from './metrics/metrics.module';
-import { AccountModule } from './account/account.module';
-import { ProjectModule } from './project/project.module';
-import { PaygModule } from './payg/payg.module';
 import { ChainModule } from './chain/chain.module';
+import { ConfigureModule } from './configure/configure.module';
+import { CoreModule } from './core/core.module';
 import { DBModule } from './db/db.module';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { ScheduleModule } from '@nestjs/schedule';
+import { MetricsModule } from './metrics/metrics.module';
+import { MonitorController } from './monitor.controller';
+import { PaygModule } from './payg/payg.module';
+import { ProjectModule } from './project/project.module';
+import { SubscriptionModule } from './subscription/subscription.module';
+import { argv, PostgresKeys } from './yargs';
 
 @Module({
   imports: [
@@ -46,9 +45,8 @@ import { ScheduleModule } from '@nestjs/schedule';
       cors: { origin: true, credentials: true },
     }),
     SubscriptionModule,
-    ServicesModule,
+    CoreModule,
     ProjectModule,
-    AccountModule,
     MetricsModule,
     PaygModule,
     ChainModule,

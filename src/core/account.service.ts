@@ -1,22 +1,24 @@
 // Copyright 2020-2022 SubQuery Pte Ltd authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util';
-import { v4 as uuid } from 'uuid';
 import crypto from 'crypto';
-import { Wallet } from 'ethers';
-
-import { encrypt } from 'src/utils/encrypt';
-import { AccountEvent } from 'src/utils/subscription';
-import { SubscriptionService } from 'src/subscription/subscription.service';
-import { Config } from 'src/configure/configure.module';
-
-import { Repository } from 'typeorm';
-import { Indexer, Controller, AccountMetaDataType } from './account.model';
-import { ContractService } from 'src/services/contract.service';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { ContractSDK } from '@subql/contract-sdk';
+import { bufferToHex, privateToAddress, toBuffer } from 'ethereumjs-util';
+import { Wallet } from 'ethers';
+import {ILike, Repository} from 'typeorm';
+import { v4 as uuid } from 'uuid';
+
+import { Config } from '../configure/configure.module';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { encrypt } from '../utils/encrypt';
+import {getLogger} from "../utils/logger";
+import { AccountEvent } from '../utils/subscription';
+import { Indexer, Controller, AccountMetaDataType } from './account.model';
+import { ContractService } from './contract.service';
+
+const logger = getLogger('account')
 
 @Injectable()
 export class AccountService {
@@ -24,15 +26,16 @@ export class AccountService {
   private sdk: ContractSDK;
 
   constructor(
-    @Inject(forwardRef(() => ContractService)) private contractService: ContractService,
     @InjectRepository(Indexer) private indexerRepo: Repository<Indexer>,
     @InjectRepository(Controller) private controllerRepo: Repository<Controller>,
+    private contractService: ContractService,
     private pubSub: SubscriptionService,
     private config: Config,
   ) {}
 
   async getIndexer(): Promise<string> {
     if (!this.indexer) {
+      logger.info(`indexer registry: ${this.sdk.indexerRegistry.address}`)
       const indexer = await this.indexerRepo.findOne();
       this.indexer = indexer?.address;
     }
@@ -57,7 +60,7 @@ export class AccountService {
 
   async emitAccountChanged(): Promise<AccountMetaDataType> {
     const accountMeta = await this.getAccountMetadata();
-    this.pubSub.publish(AccountEvent.Indexer, { accountChanged: accountMeta });
+    await this.pubSub.publish(AccountEvent.Indexer, {accountChanged: accountMeta});
     return accountMeta;
   }
 
@@ -77,10 +80,11 @@ export class AccountService {
   }
 
   onAddControllerEvent() {
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     this.contractService.getSdk().indexerRegistry.on('SetControllerAccount', async (indexer, controller) => {
       if (this.indexer !== indexer) return;
-      this.activeController(controller);
-      this.emitAccountChanged();
+      await this.activeController(controller);
+      await this.emitAccountChanged();
     });
   }
 
@@ -126,7 +130,7 @@ export class AccountService {
       await this.controllerRepo.save(old);
     }
 
-    const controller = await this.controllerRepo.findOne({ where: { address } });
+    const controller = await this.controllerRepo.findOne({ where: { address: ILike(`%${address}%`) } });
     if (controller) {
       controller.active = true;
       await this.controllerRepo.save(controller);

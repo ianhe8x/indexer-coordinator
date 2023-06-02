@@ -5,11 +5,12 @@ import { Injectable } from '@nestjs/common';
 import { isEmpty } from 'lodash';
 import fetch, { Response } from 'node-fetch';
 
-import { nodeContainer, queryContainer } from 'src/utils/docker';
-import { debugLogger } from 'src/utils/logger';
-import { ZERO_BYTES32 } from 'src/utils/project';
-import { Project, MetadataType } from 'src/project/project.model';
+import { Project, MetadataType } from '../project/project.model';
+import { nodeContainer, queryContainer } from '../utils/docker';
+import { debugLogger } from '../utils/logger';
+import { ZERO_BYTES32 } from '../utils/project';
 
+import {AccountService} from "./account.service";
 import { ContractService } from './contract.service';
 import { DockerService } from './docker.service';
 import { ServiceStatus, Poi, PoiItem } from './types';
@@ -18,7 +19,10 @@ import { ServiceStatus, Poi, PoiItem } from './types';
 export class QueryService {
   private emptyPoi: Poi;
 
-  constructor(private docker: DockerService, private contract: ContractService) {
+  constructor(
+    private docker: DockerService,
+    private accountService: AccountService,
+    private contract: ContractService) {
     this.emptyPoi = { blockHeight: 0, mmrRoot: ZERO_BYTES32 };
   }
 
@@ -56,7 +60,7 @@ export class QueryService {
     }
   }
 
-  public async getQueryMetaData(id: string, endpoint: string): Promise<MetadataType> {
+  async getQueryMetaData(id: string, endpoint: string): Promise<MetadataType> {
     const { indexerStatus, queryStatus } = await this.servicesStatus(id);
     const queryBody = JSON.stringify({
       query: `{
@@ -104,7 +108,7 @@ export class QueryService {
     }
   }
 
-  public async getMmrRoot(id: string, endpoint: string, blockHeight: number): Promise<string> {
+  async getMmrRoot(id: string, endpoint: string, blockHeight: number): Promise<string> {
     const queryBody = JSON.stringify({
       query: `{
         _poi(id: ${blockHeight}) {
@@ -126,7 +130,7 @@ export class QueryService {
     }
   }
 
-  public async getLastPoi(id: string, endpoint: string): Promise<Poi> {
+  async getLastPoi(id: string, endpoint: string): Promise<Poi> {
     // TODO: will replace with another api to get the latest mmrRoot value
     const queryBody = JSON.stringify({
       query: `{
@@ -174,15 +178,15 @@ export class QueryService {
     return this.getLastPoi(id, queryEndpoint);
   }
 
-  public async getReportPoi(project: Project): Promise<Poi> {
+  async getReportPoi(project: Project): Promise<Poi> {
     const { id } = project;
     try {
       const poi = await this.getValidPoi(project);
       const { blockHeight, mmrRoot } = poi;
       debugLogger('poi', `project: ${project.id} | ${poi.blockHeight} | ${poi.mmrRoot}`);
       if (blockHeight === 0) return poi;
-
-      const indexingStatus = await this.contract.deploymentStatusByIndexer(id);
+      const indexer = await this.accountService.getIndexer();
+      const indexingStatus = await this.contract.deploymentStatusByIndexer(id, indexer);
       if (indexingStatus.blockHeight.lt(blockHeight)) return poi;
 
       const shortId = id.substring(0, 15);
@@ -191,7 +195,7 @@ export class QueryService {
         `project: ${shortId} | network block height: ${indexingStatus.blockHeight.toNumber()} lg ${blockHeight} mmrRoot: ${mmrRoot}`,
       );
     } catch (e) {
-      debugLogger('report', `failed to get report poi: ${e}`);
+      debugLogger('report', `failed to get report poi: ${String(e)}`);
     }
 
     return this.emptyPoi;
