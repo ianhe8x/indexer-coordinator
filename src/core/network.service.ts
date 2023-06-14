@@ -19,6 +19,7 @@ import {Project, ProjectEntity} from '../project/project.model';
 import {colorText, debugLogger, getLogger, TextColor} from '../utils/logger';
 import {ZERO_BYTES32} from '../utils/project';
 
+import {mutexPromise} from "../utils/promise";
 import {AccountService} from "./account.service";
 import {ContractService} from './contract.service';
 import {QueryService} from './query.service';
@@ -110,6 +111,7 @@ export class NetworkService implements OnApplicationBootstrap {
     }
   }
 
+  @mutexPromise()
   async sendTransaction(actionName: string, txFun: TxFun, desc = '', retries = 0) {
     try {
       logger.info(`${colorText(actionName)}: ${colorText('PROCESSING', TextColor.YELLOW)} ${desc}`);
@@ -122,7 +124,6 @@ export class NetworkService implements OnApplicationBootstrap {
 
       return;
     } catch (e) {
-      // this.failedTransactions.push({ name: actionName, txFun, desc });
       if (retries < MAX_RETRY) {
         logger.warn(`${colorText(actionName)}: ${colorText('RETRY', TextColor.YELLOW)} ${desc}`);
         await this.sendTransaction(actionName, txFun, desc, retries + 1);
@@ -181,7 +182,7 @@ export class NetworkService implements OnApplicationBootstrap {
     await this.sendTransaction(
       `report project status`,
       async (overrides) => {
-        const tx = await this.sdk.queryRegistry.reportIndexingStatus(
+        return await this.sdk.queryRegistry.reportIndexingStatus(
           indexer,
           cidToBytes32(id.trim()),
           blockHeight,
@@ -189,7 +190,6 @@ export class NetworkService implements OnApplicationBootstrap {
           timestamp,
           overrides,
         );
-        return tx;
       },
       desc,
     );
@@ -345,9 +345,9 @@ export class NetworkService implements OnApplicationBootstrap {
     ];
   }
 
-  private async checkControllerReady(): Promise<void> {
+  private async checkControllerReady(): Promise<boolean> {
     const isContractReady = await this.syncContractConfig();
-    if (!isContractReady) throw new Error(`contract sdk not ready`);
+    if (!isContractReady) return false;
 
     const isBalanceSufficient = await this.contractService.hasSufficientBalance();
     if (!isBalanceSufficient) {
@@ -360,7 +360,9 @@ export class NetworkService implements OnApplicationBootstrap {
 
   @Cron(CronExpression.EVERY_10_MINUTES)
   async doNetworkActions() {
-    await this.checkControllerReady();
+    const isReady = await this.checkControllerReady();
+    if (!isReady) return;
+
     try {
       for (const action of this.networkActions()) {
         await action();
