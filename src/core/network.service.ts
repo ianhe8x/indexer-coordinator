@@ -186,6 +186,7 @@ export class NetworkService implements OnApplicationBootstrap {
   async reportIndexingService(project: Project) {
     const {id} = project;
     const poi = await this.queryService.getReportPoi(project);
+    logger.debug(`poi: ${poi.blockHeight}`)
     if (poi.blockHeight === 0) return;
 
     const {blockHeight, mmrRoot} = poi;
