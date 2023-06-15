@@ -23,7 +23,6 @@ const logger = getLogger('account')
 @Injectable()
 export class AccountService {
   private indexer: string | undefined;
-  private sdk: ContractSDK;
 
   constructor(
     @InjectRepository(Indexer) private indexerRepo: Repository<Indexer>,
@@ -31,7 +30,12 @@ export class AccountService {
     private contractService: ContractService,
     private pubSub: SubscriptionService,
     private config: Config,
-  ) {}
+  ) {
+  }
+
+  get sdk(): ContractSDK {
+    return this.contractService.getSdk();
+  }
 
   async getIndexer(): Promise<string> {
     if (!this.indexer) {
@@ -81,7 +85,7 @@ export class AccountService {
 
   onAddControllerEvent() {
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    this.contractService.getSdk().indexerRegistry.on('SetControllerAccount', async (indexer, controller) => {
+    this.sdk.indexerRegistry.on('SetControllerAccount', async (indexer, controller) => {
       if (this.indexer !== indexer) return;
       await this.activeController(controller);
       await this.emitAccountChanged();
@@ -140,8 +144,7 @@ export class AccountService {
   }
 
   async getControllers(): Promise<Controller[]> {
-    const controllers = await this.controllerRepo.find();
-    return controllers;
+    return this.controllerRepo.find();
   }
 
   async removeAccounts(): Promise<AccountMetaDataType> {
@@ -149,7 +152,6 @@ export class AccountService {
     await this.indexerRepo.clear();
     await this.controllerRepo.clear();
 
-    const accountMetadata = await this.emitAccountChanged();
-    return accountMetadata;
+    return this.emitAccountChanged();
   }
 }
