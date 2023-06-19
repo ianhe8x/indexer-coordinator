@@ -123,6 +123,9 @@ export class ProjectService {
     });
 
     const deployment = result.data.deployment;
+    if (!deployment) {
+      return undefined;
+    }
     const project = deployment.project;
     const metadataStr = await this.ipfsClient.cat(project.metadata);
     const versionStr = await this.ipfsClient.cat(deployment.version);
