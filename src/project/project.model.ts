@@ -7,9 +7,9 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
 // TODO: temp place to put these types
 @ObjectType('ProjectInfo')
 export class ProjectInfo {
-  @Field()
+  @Field({ defaultValue: 'unknown' })
   name: string;
-  @Field()
+  @Field({ defaultValue: 'unknown' })
   owner: string;
   @Field({ nullable: true })
   image: string;
