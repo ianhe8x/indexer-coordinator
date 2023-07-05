@@ -116,12 +116,7 @@ export class NetworkService implements OnApplicationBootstrap {
 
   async syncContractConfig(): Promise<boolean> {
     try {
-      const indexer = await this.accountService.getIndexer();
-      if (!indexer) {
-        logger.error('No indexer configured');
-        return false;
-      }
-      this.sdk = await this.contractService.updateContractSDK(indexer);
+      this.sdk = await this.contractService.updateContractSDK();
       return !!this.sdk;
     } catch (e) {
       logger.error(e, 'syncContractConfig');
@@ -130,7 +125,11 @@ export class NetworkService implements OnApplicationBootstrap {
   }
 
   @mutexPromise()
-  async sendTransaction(actionName: string, txFun: TxFun, desc = '', retries = 0) {
+  async sendTransaction(actionName: string, txFun: TxFun, desc = '') {
+    await this._sendTransaction(actionName, txFun, desc);
+  }
+
+  private async _sendTransaction(actionName: string, txFun: TxFun, desc = '', retries = 0) {
     try {
       logger.info(`${colorText(actionName)}: ${colorText('PROCESSING', TextColor.YELLOW)} ${desc}`);
 
@@ -144,7 +143,7 @@ export class NetworkService implements OnApplicationBootstrap {
     } catch (e) {
       if (retries < MAX_RETRY) {
         logger.warn(`${colorText(actionName)}: ${colorText('RETRY', TextColor.YELLOW)} ${desc}`);
-        await this.sendTransaction(actionName, txFun, desc, retries + 1);
+        await this._sendTransaction(actionName, txFun, desc, retries + 1);
       } else {
         logger.warn(e, `${colorText(actionName)}: ${colorText('FAILED', TextColor.RED)}`);
         throw e;

@@ -6,6 +6,8 @@ services:
     container_name: node_{{projectID}}
     restart: always
     cpus: {{cpu}}
+    expose:
+      - {{servicePort}}
     environment:
       DB_USER: {{postgres.user}}
       DB_PASS: {{postgres.pass}}
@@ -26,6 +28,7 @@ services:
       - --workers={{worker}}
       - --store-cache-threshold={{cache}}
       - --proof-of-index=true
+      - --mmr-store-type={{mmrStoreType}}
       - -m={{mmrPath}}/poi/{{deploymentID}}/.mmr
       - --disable-historical=false
     healthcheck:
@@ -43,8 +46,8 @@ services:
   query_{{projectID}}:
     image: onfinality/subql-query:{{queryVersion}}
     container_name: query_{{projectID}}
-    ports:
-      - {{servicePort}}:{{servicePort}}
+    expose:
+      - {{servicePort}}
     depends_on:
       "node_{{projectID}}":
         condition: service_healthy

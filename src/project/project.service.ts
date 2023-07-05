@@ -1,7 +1,7 @@
 // Copyright 2020-2022 SubQuery Pte Ltd authors & contributors
 // SPDX-License-Identifier: Apache-2.0
 
-import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { GraphqlQueryClient, IPFS_URLS, IPFSClient, NETWORK_CONFIGS } from '@subql/network-clients';
 import { Not, Repository } from 'typeorm';
@@ -25,7 +25,6 @@ import {
   projectId,
   queryEndpoint,
   schemaName,
-  TemplateType,
 } from '../utils/docker';
 import { debugLogger, getLogger } from '../utils/logger';
 import { nodeConfigs, projectConfigChanged } from '../utils/project';
@@ -44,6 +43,7 @@ import {
   ProjectEntity,
   ProjectInfo,
 } from './project.model';
+import { MmrStoreType, TemplateType } from './types';
 
 @Injectable()
 export class ProjectService {
@@ -67,13 +67,13 @@ export class ProjectService {
     void this.restoreProjects();
   }
 
-  async getProject(id: string): Promise<Project> {
-    return this.projectRepo.findOne({ id });
+  getProject(id: string): Promise<Project> {
+    return this.projectRepo.findOneBy({ id });
   }
 
   async getProjectDetails(id: string): Promise<ProjectDetails> {
-    const project = await this.projectRepo.findOne({ id });
-    const payg = await this.paygRepo.findOne({ id });
+    const project = await this.projectRepo.findOneBy({ id });
+    const payg = await this.paygRepo.findOneBy({ id });
     const metadata = await this.query.getQueryMetaData(id, project.queryEndpoint);
 
     return { ...project, metadata, payg };
@@ -160,7 +160,7 @@ export class ProjectService {
   }
 
   async updateProjectStatus(id: string, status: IndexingStatus): Promise<Project> {
-    const project = await this.projectRepo.findOne({ id });
+    const project = await this.projectRepo.findOneBy({ id });
     project.status = status;
     return this.projectRepo.save(project);
   }
@@ -187,13 +187,24 @@ export class ProjectService {
     return await this.createAndStartProject(id, baseConfig, advancedConfig);
   }
 
+  async getMmrStoreType(id: string): Promise<MmrStoreType> {
+    const schema = schemaName(id);
+    const isDBExist = await this.db.checkSchemaExist(schema);
+    if (!isDBExist) return MmrStoreType.postgres;
+
+    const isMmrTableExist = await this.db.checkTableExist('_mmr', schema);
+    if (isMmrTableExist) return MmrStoreType.postgres;
+
+    return MmrStoreType.file;
+  }
+
   async configToTemplate(
     project: Project,
     baseConfig: ProjectBaseConfig,
     advancedConfig: ProjectAdvancedConfig,
   ): Promise<TemplateType> {
-    const port = await this.portService.getAvailablePort();
-    const servicePort = getServicePort(project.queryEndpoint) ?? port;
+    const servicePort = this.portService.getAvailablePort();
+    const mmrStoreType = await this.getMmrStoreType(project.id);
     const projectID = projectId(project.id);
 
     const postgres = this.config.postgres;
@@ -205,6 +216,7 @@ export class ProjectService {
       projectID,
       servicePort,
       postgres,
+      mmrStoreType,
       dockerNetwork,
       ...baseConfig,
       ...advancedConfig,
@@ -294,7 +306,7 @@ export class ProjectService {
   }
 
   async updateProjectPayg(id: string, paygConfig: PaygConfig) {
-    const payg = await this.paygRepo.findOne({ id });
+    const payg = await this.paygRepo.findOneBy({ id });
     if (!payg) {
       getLogger('project').error(`project not exist: ${id}`);
       return;

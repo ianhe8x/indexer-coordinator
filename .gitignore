@@ -37,3 +37,6 @@ lerna-debug.log*
 # Docker
 .data
 .projects
+.eslintcache
+
+.env
