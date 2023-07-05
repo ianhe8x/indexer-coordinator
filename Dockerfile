@@ -16,7 +16,7 @@ COPY . .
 RUN yarn build
 
 # Remove development dependencies
-RUN npm prune --production
+RUN npm prune --production --legacy-peer-deps
 
 FROM node:16-alpine
 
