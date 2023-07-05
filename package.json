@@ -32,8 +32,7 @@
     "migrate:up": "ts-node -r dotenv/config ./node_modules/.bin/typeorm migration:run -d ./src/data-source.ts",
     "migrate:down": "ts-node -r dotenv/config ./node_modules/.bin/typeorm migration:revert -d ./src/data-source.ts",
     "build:docker-compose": "docker-compose -f ./dev/docker-compose.yml build --no-cache",
-    "start:docker-compose": "docker-compose -f ./dev/docker-compose.yml up -d",
-    "postinstall": "husky install"
+    "start:docker-compose": "docker-compose -f ./dev/docker-compose.yml up -d"
   },
   "dependencies": {
     "@nestjs/common": "^8.0.0",
